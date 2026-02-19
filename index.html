@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LightRunner — Power the Maze</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cell-size:44px;
+  --bg:#03050a;
+  --neon-outer: rgba(46, 204, 113, 0.08);
+  --accent: #39ffbf;
+  --danger: #ff6b6b;
+  --glass: rgba(255,255,255,0.04);
+  --neon: #39ffbf;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:Inter,system-ui,Arial; color:#e6f9f0;
+  background: radial-gradient(1200px 800px at 10% 20%, #071622 0%, #02050a 35%, #000 100%);
+  display:flex; flex-direction:column; align-items:center; gap:12px; padding:18px;
+}
+header{ text-align:center }
+h1{ margin:0; font-size:26px; letter-spacing:0.6px; color:var(--neon); text-shadow:0 4px 22px rgba(57,255,191,0.12) }
+.lead{ margin:6px 0 0; color:#9fcbd3; font-size:13px }
+
+.topbar{ width:100%; max-width:1100px; display:flex; gap:12px; justify-content:space-between; align-items:center; margin:10px 0; flex-wrap:wrap }
+.controls{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+.btn{ background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.04); color:inherit; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:700; box-shadow: 0 6px 18px rgba(0,0,0,0.5) }
+.btn:hover{ transform:translateY(-3px); filter:brightness(1.03) }
+.select{ background:var(--glass); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); color:#dff7ee }
+
+.hud{ display:flex; gap:12px; align-items:center; background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.03) }
+.hud .item{ font-weight:700; color:#cfeef8 }
+
+.main{ width:100%; max-width:1100px; display:flex; gap:18px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
+
+.left-column{ display:flex; flex-direction:column; gap:12px; align-items:center; }
+.right-column{ flex:1; display:flex; flex-direction:column; gap:12px; }
+
+#maze2dWrap{ width: calc(var(--cell-size) * 11 + 28px); height: calc(var(--cell-size) * 11 + 28px); background:linear-gradient(180deg,#071b1b,#031018); border-radius:12px; padding:12px; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 30px rgba(0,0,0,0.6) inset; position:relative; overflow:hidden }
+.maze2d{ display:grid; grid-template-columns: repeat(11, var(--cell-size)); grid-auto-rows: var(--cell-size); gap:6px; position:relative }
+
+.cell{ width:var(--cell-size); height:var(--cell-size); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#042520; user-select:none; transition: box-shadow .18s, transform .12s }
+.cell.wall{
+  background: linear-gradient(180deg,#071a24,#04202a);
+  box-shadow: inset 0 -8px 18px rgba(0,0,0,0.6), 0 6px 30px rgba(0,0,0,0.6);
+  border:1px solid rgba(57,255,191,0.03);
+}
+.cell.path{ background: linear-gradient(180deg,#e9fffb,#d6fff0); box-shadow: inset 0 2px 6px rgba(0,0,0,0.06) }
+.cell.start{ background:linear-gradient(135deg,var(--neon), #28e3a8); color:#003029; box-shadow: 0 8px 30px rgba(57,255,191,0.12) }
+.cell.end{ background:linear-gradient(135deg,var(--danger), #ff8a8a); color:#2d0000; box-shadow: 0 8px 30px rgba(255,107,107,0.12) }
+
+/* neon glow for lights-on state */
+.wrapper-lit .cell.wall{ box-shadow: inset 0 -8px 22px rgba(0,0,0,0.5), 0 0 18px rgba(57,255,191,0.04); border-color: rgba(57,255,191,0.22) }
+.wrapper-lit .cell.path{ box-shadow: inset 0 2px 10px rgba(57,255,191,0.05) }
+
+/* player */
+.player{ position:absolute; width:var(--cell-size); height:var(--cell-size); display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#49f6c1,#27ae60); color:#031d18; font-weight:900; border-radius:8px; z-index:30; box-shadow: 0 14px 40px rgba(57,255,191,0.14); transition: top .15s, left .15s, transform .12s; }
+.player.pop{ transform:scale(1.06) }
+
+/* switch board visual (faint when dark) */
+.switch-glow{
+  position:absolute; pointer-events:none; width:var(--cell-size); height:var(--cell-size); border-radius:8px; z-index:20;
+  box-shadow: 0 0 22px rgba(255,255,255,0.03);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900;
+}
+.switch-hidden{ opacity:0.08; filter:blur(1px); transform:scale(0.95) }
+
+/* particle container */
+.particles{ position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; z-index:60 }
+
+/* 3d container */
+#threeContainer{ width:720px; height:720px; background:linear-gradient(180deg,#02040a,#0b1220); border-radius:12px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 24px 80px rgba(0,0,0,0.6) }
+#threeMiniMap{ position:absolute; right:12px; bottom:12px; width:160px; height:160px; background:rgba(0,0,0,0.45); border-radius:8px; border:1px solid rgba(255,255,255,0.03); z-index:90; display:none }
+
+/* neon title on load */
+.title-neon{ color:var(--neon); text-shadow:0 6px 26px rgba(57,255,191,0.12) }
+
+/* small text */
+.small{ font-size:13px; color:#9ec9cf }
+
+/* responsive */
+@media (max-width:980px){ #threeContainer{ width:520px; height:520px } }
+@media (max-width:640px){
+  :root{ --cell-size:34px }
+  #threeContainer{ width:320px; height:320px }
+  #threeMiniMap{ width:120px; height:120px }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 class="title-neon">LightRunner</h1>
+  <p class="lead">Find the switch in the dark. Power on the maze. Escape the neon labyrinth.</p>
+</header>
+
+<div class="topbar">
+  <div class="controls">
+    <button class="btn" id="genBtn">Generate Maze</button>
+    <select id="sizeSel" class="select">
+      <option value="9">9×9 (Easy)</option>
+      <option value="11">11×11 (Medium)</option>
+      <option value="13">13×13 (Hard)</option>
+      <option value="15">15×15 (Extreme)</option>
+    </select>
+
+    <select id="viewSel" class="select">
+      <option value="2d">2D Grid</option>
+      <option value="3dtop">3D Top</option>
+      <option value="3dfp">3D First Person</option>
+    </select>
+
+    <button class="btn" id="playBtn">▶ Play</button>
+    <button class="btn" id="pauseBtn">⏸ Pause</button>
+    <button class="btn" id="resetBtn">⟲ Reset</button>
+  </div>
+
+  <div class="hud">
+    <div class="item" id="levelLabel">Intro: Find the Switch</div>
+    <div class="item" id="timer">Time: 0s</div>
+    <div class="item" id="bestLabel">Best: —</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="left-column">
+    <div id="maze2dWrap" class="wrapper-dark">
+      <div id="maze2d" class="maze2d"></div>
+      <div id="player" class="player" style="display:none">S</div>
+      <div id="switchVis" class="switch-glow switch-hidden">⚡</div>
+      <div class="particles" id="particles"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="small">Controls: WASD / Arrow keys or on-screen arrows</div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <div id="touchControls" style="display:flex; gap:6px">
+        <button class="btn" data-dir="up">▲</button>
+        <button class="btn" data-dir="left">◀</button>
+        <button class="btn" data-dir="down">▼</button>
+        <button class="btn" data-dir="right">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-column">
+    <div id="threeContainer">3D view inactive</div>
+    <canvas id="threeMiniMap" style="display:none"></canvas>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-top:8px">
+      <div class="leaderboard" id="leaderboard">
+        <h4 style="margin:0 0 6px 0">Leaderboard (best seconds)</h4>
+        <div id="lbEntries">No records yet</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:220px">
+        <div class="small">View: <span id="curMode">2D</span></div>
+        <div class="small">Score: <span id="score">0</span></div>
+        <div class="small">Tip: reach the glowing switch to power the maze</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:18px"></div>
+
+Three.js
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+
+<script>
+/* ===========================
+   LightRunner - Full Game
+   =========================== */
+
+/* ---------- utilities ---------- */
+function randInt(n){ return Math.floor(Math.random()*n) }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+/* ---------- audio (WebAudio) ---------- */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+let humOsc = null;
+function ensureAudio(){ if(!audioCtx) audioCtx = new AudioCtx(); }
+function beep(freq=520, dur=0.06, type='sine', vol=0.05){
+  ensureAudio();
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  o.connect(g); g.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.linearRampToValueAtTime(vol, now + 0.01);
+  o.start(now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  o.stop(now + dur + 0.02);
+}
+function playHum(on=true){
+  ensureAudio();
+  if(on){
+    if(humOsc) return;
+    humOsc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    humOsc.type = 'sine'; humOsc.frequency.value = 60;
+    g.gain.value = 0.015;
+    humOsc.connect(g); g.connect(audioCtx.destination);
+    humOsc.start();
+    humOsc._gain = g;
+  } else {
+    if(!humOsc) return;
+    humOsc._gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+    setTimeout(()=>{ try{ humOsc.stop(); }catch(e){} humOsc=null }, 230);
+  }
+}
+function sparkSound(){
+  beep(1200,0.06,'square',0.04);
+  setTimeout(()=>beep(900,0.08,'sawtooth',0.04),70);
+}
+function winTune(){
+  ensureAudio();
+  const now = audioCtx.currentTime;
+  [680,820,980,1160].forEach((f,i)=>{
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(0.0001, now + i*0.08);
+    g.gain.linearRampToValueAtTime(0.09, now + i*0.08 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + i*0.08 + 0.24);
+    o.start(now + i*0.08); o.stop(now + i*0.08 + 0.26);
+  });
+}
+
+/* ---------- maze generator (recursive backtracker) ---------- */
+function generateMazeGrid(size){
+  if(size%2===0) size++;
+  const rows = size, cols = size;
+  const grid = Array.from({length:rows}, ()=>Array(cols).fill(1));
+  function carve(r,c){
+    grid[r][c]=0;
+    let dirs = [[0,-2],[0,2],[-2,0],[2,0]];
+    for(let i=dirs.length-1;i>0;i--){ const j = randInt(i+1); [dirs[i],dirs[j]]=[dirs[j],dirs[i]]; }
+    for(const [dr,dc] of dirs){
+      const nr=r+dr, nc=c+dc;
+      if(nr>0 && nr<rows && nc>0 && nc<cols && grid[nr][nc]===1){
+        grid[r+dr/2][c+dc/2]=0;
+        carve(nr,nc);
+      }
+    }
+  }
+  const sr = 1 + 2*randInt(Math.floor((rows-1)/2));
+  const sc = 1 + 2*randInt(Math.floor((cols-1)/2));
+  carve(sr,sc);
+  // choose start & end on perimeter paths
+  const perim=[];
+  for(let i=1;i<cols;i+=2){ if(grid[1][i]===0) perim.push([1,i]); if(grid[rows-2][i]===0) perim.push([rows-2,i]); }
+  for(let i=1;i<rows;i+=2){ if(grid[i][1]===0) perim.push([i,1]); if(grid[i][cols-2]===0) perim.push([i,cols-2]); }
+  if(perim.length < 2){
+    for(let r=1;r<rows;r+=2) for(let c=1;c<cols;c+=2) if(grid[r][c]===0) perim.push([r,c]);
+  }
+  const start = perim[0] || [1,1];
+  const end = perim[perim.length-1] || [rows-2,cols-2];
+  return {grid, start, end, rows, cols};
+}
+
+/* ---------- DOM refs ---------- */
+const maze2dEl = document.getElementById('maze2d');
+const maze2dWrap = document.getElementById('maze2dWrap');
+const playerEl = document.getElementById('player');
+const switchVis = document.getElementById('switchVis');
+const particles = document.getElementById('particles');
+const threeContainer = document.getElementById('threeContainer');
+const miniMapCanvas = document.getElementById('threeMiniMap');
+const levelLabel = document.getElementById('levelLabel');
+const timerLabel = document.getElementById('timer');
+const bestLabel = document.getElementById('bestLabel');
+const lbEntries = document.getElementById('lbEntries');
+
+let currentGridObj = null;
+let currentSize = 9;
+let playing = false, paused = false, lightsOn = false;
+let timerId = null, elapsed = 0;
+let playerPos = {r:0,c:0};
+let score = 0;
+let threeManager = null;
+let currentView = '2d';
+let switchPos = null; // [r,c] for the switch board
+let levels = [9,11,13,15]; // sizes for levels
+let levelIndex = 0; // which level (0-based), increment after each win
+
+/* ---------- leaderboard ---------- */
+function bestKey(view,size,levelIdx){ return `lr_best_${view}_${size}_lvl${levelIdx}` }
+function saveBest(view,size,levelIdx,secs){
+  const k = bestKey(view,size,levelIdx), prev = localStorage.getItem(k);
+  if(!prev || secs < parseFloat(prev)) localStorage.setItem(k, secs.toString());
+  renderLeaderboard();
+}
+function getBest(view,size,levelIdx){ const v = localStorage.getItem(bestKey(view,size,levelIdx)); return v?parseFloat(v):null; }
+function renderLeaderboard(){
+  const modes=['2d','3dtop','3dfp'];
+  lbEntries.innerHTML = '';
+  for(const m of modes){
+    const b = getBest(m, currentGridObj?currentGridObj.cols:currentSize, levelIndex);
+    const row = document.createElement('div'); row.className='lb-entry';
+    row.innerHTML = `<div style="opacity:.9">${m.toUpperCase()}</div><div>${b!==null? b.toFixed(1)+'s':'—'}</div>`;
+    lbEntries.appendChild(row);
+  }
+}
+
+/* ---------- draw 2D ---------- */
+function draw2D(gridObj){
+  currentGridObj = gridObj;
+  const {grid, rows, cols, start, end} = gridObj;
+  document.documentElement.style.setProperty('--cols', cols);
+  maze2dEl.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
+  maze2dEl.innerHTML = '';
+  // adjust wrap
+  const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 44;
+  const gap = 6;
+  const wrapW = Math.min((cols * (cellSize + gap)) + 28, 760);
+  maze2dWrap.style.width = wrapW + 'px'; maze2dWrap.style.height = wrapW + 'px';
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const v = grid[r][c];
+      const div = document.createElement('div');
+      div.className = 'cell ' + (v===1? 'wall':'path');
+      if(r===start[0] && c===start[1]){ div.classList.add('start'); div.textContent = 'S'; }
+      if(r===end[0] && c===end[1]){ div.classList.add('end'); div.textContent = 'E'; }
+      maze2dEl.appendChild(div);
+    }
+  }
+  // show player
+  playerEl.style.display='block';
+  playerPos = {r:start[0], c:start[1]};
+  setPlayerVisual(playerPos.r, playerPos.c, true);
+  // place switch somewhere random near center but not at start/end
+  const possible = [];
+  for(let r=1;r<rows-1;r+=2) for(let c=1;c<cols-1;c+=2) if(!(r===start[0]&&c===start[1]) && !(r===end[0]&&c===end[1]) && grid[r][c]===0) possible.push([r,c]);
+  switchPos = possible[randInt(possible.length)] || [Math.floor(rows/2), Math.floor(cols/2)];
+  // position switch visualization (faint)
+  updateSwitchVis();
+  // update HUD
+  levelLabel.textContent = `Intro: Find the Switch`;
+  const best = getBest('2d', cols, levelIndex);
+  bestLabel.textContent = `Best: ${best!==null?best.toFixed(1)+'s':'—'}`;
+  renderLeaderboard();
+  // hide 3D by default
+  updateViewVisibility();
+}
+
+/* ---------- player visuals & movement ---------- */
+function setPlayerVisual(r,c,instant=false){
+  const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 44;
+  const gap = 6; const pad = 12;
+  const top = r * (cellSize + gap) + pad;
+  const left = c * (cellSize + gap) + pad;
+  if(instant){
+    playerEl.style.transition='none';
+    playerEl.style.top = top + 'px';
+    playerEl.style.left = left + 'px';
+    void playerEl.offsetWidth;
+    playerEl.style.transition='';
+  } else {
+    playerEl.classList.add('pop');
+    setTimeout(()=>playerEl.classList.remove('pop'),160);
+    playerEl.style.top = top + 'px';
+    playerEl.style.left = left + 'px';
+  }
+  // update minimap if visible
+  drawMiniMap();
+}
+
+/* try move for 2D */
+function tryMove2D(dr,dc){
+  if(!playing || paused) return;
+  const r = playerPos.r + dr, c = playerPos.c + dc;
+  if(r<0||c<0||r>=currentGridObj.rows||c>=currentGridObj.cols) return;
+  if(currentGridObj.grid[r][c]===1){
+    beep(160,0.06,'square',0.03);
+    flashCell2D(r,c);
+    return;
+  }
+  playerPos = {r,c};
+  setPlayerVisual(r,c);
+  beep(520,0.05,'sine',0.04);
+  // if still in intro (lights off) check switch
+  if(!lightsOn && r===switchPos[0] && c===switchPos[1]){
+    reachSwitch();
+    return;
+  }
+  // if lights on and reached end
+  if(lightsOn && r===currentGridObj.end[0] && c===currentGridObj.end[1]){
+    onWinLevel();
+  }
+}
+function flashCell2D(r,c){
+  const idx = r*currentGridObj.cols + c;
+  const cell = maze2dEl.children[idx];
+  if(!cell) return;
+  cell.animate([{transform:'scale(1)'},{transform:'scale(0.96)'},{transform:'scale(1)'}],{duration:160});
+}
+
+/* ---------- switch visualization ---------- */
+function updateSwitchVis(){
+  if(!switchPos) return;
+  const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 44;
+  const gap = 6; const pad = 12;
+  const top = switchPos[0] * (cellSize + gap) + pad;
+  const left = switchPos[1] * (cellSize + gap) + pad;
+  switchVis.style.top = top + 'px';
+  switchVis.style.left = left + 'px';
+  // if lights off, faint glow; if lights on, bright and hidden
+  if(!lightsOn){
+    switchVis.classList.remove('switch-hidden');
+    switchVis.style.opacity = '0.9';
+    switchVis.style.transform = 'scale(0.96)';
+  } else {
+    switchVis.classList.add('switch-hidden');
+    switchVis.style.opacity = '0';
+  }
+}
+
+/* ---------- reach switch (power on) ---------- */
+function reachSwitch(){
+  // play spark
+  sparkSound();
+  // small particle effect
+  spawnParticlesAt(switchPos[0], switchPos[1], 18);
+  // light on animation (CSS)
+  lightsOn = true;
+  maze2dWrap.classList.add('wrapper-lit');
+  // start hum
+  playHum(true);
+  // start actual timer/level
+  levelLabel.textContent = `Level ${levelIndex+1}: ${levels[levelIndex]}×${levels[levelIndex]}`;
+  // reveal walls neon stronger
+  updateSwitchVis();
+  // start playing if not already
+  if(!playing){ playing=true; startTimer(); }
+}
+
+/* ---------- particles ---------- */
+function spawnParticlesAt(r,c,count=12){
+  const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 44;
+  const gap = 6; const pad = 12;
+  const originX = switchPos ? (switchPos[1] * (cellSize + gap) + pad + cellSize/2) : (playerEl.offsetLeft + cellSize/2);
+  const originY = switchPos ? (switchPos[0] * (cellSize + gap) + pad + cellSize/2) : (playerEl.offsetTop + cellSize/2);
+  for(let i=0;i<count;i++){
+    const dot = document.createElement('div');
+    dot.style.position='absolute';
+    dot.style.width='8px'; dot.style.height='8px'; dot.style.borderRadius='50%';
+    dot.style.left = originX + 'px'; dot.style.top = originY + 'px';
+    dot.style.background = `hsl(${Math.random()*360},80%,60%)`;
+    particles.appendChild(dot);
+    const angle = Math.random()*Math.PI*2;
+    const dist = 20 + Math.random()*70;
+    dot.animate([
+      { transform:'translate(0,0)', opacity:1 },
+      { transform:`translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px)`, opacity:0 }
+    ], { duration:600 + Math.random()*400, easing:'cubic-bezier(.2,.9,.3,1)', fill:'forwards' });
+    setTimeout(()=>dot.remove(), 1100);
+  }
+}
+
+/* ---------- timer ---------- */
+function startTimer(){ clearInterval(timerId); elapsed=0; timerLabel.textContent='Time: 0s'; timerId=setInterval(()=>{ elapsed++; timerLabel.textContent=`Time: ${elapsed}s`; },1000); }
+function stopTimer(){ clearInterval(timerId); }
+
+/* ---------- win handling & level progression ---------- */
+function onWinLevel(){
+  playing=false; stopTimer(); playHum(false); winTune();
+  spawnParticlesAt(currentGridObj.end[0], currentGridObj.end[1], 32);
+  levelLabel.textContent = `Level ${levelIndex+1} Complete!`;
+  saveBest(currentView, currentGridObj.cols, levelIndex, elapsed);
+  score += Math.max(120 - elapsed*2, 10);
+  document.getElementById('score').textContent = score;
+  // auto-advance after a short pause
+  setTimeout(()=> {
+    levelIndex++;
+    if(levelIndex >= levels.length){
+      levelLabel.textContent = '🏆 All levels cleared! Restarting at Easy.';
+      levelIndex = 0;
+    } else {
+      levelLabel.textContent = `Preparing Level ${levelIndex+1}...`;
+    }
+    // create new maze for next level
+    setTimeout(()=> startLevel(levels[levelIndex]), 700);
+  }, 1200);
+}
+
+/* ---------- create & draw level ---------- */
+function startLevel(size){
+  // lights off again (dramatic)
+  lightsOn = false;
+  maze2dWrap.classList.remove('wrapper-lit');
+  playHum(false);
+  const gridObj = generateMazeGrid(size);
+  // ensure start/end not on border outside
+  if(gridObj.start[0]===0) gridObj.start[0]=1;
+  if(gridObj.end[0]===gridObj.rows-1) gridObj.end[0]=gridObj.rows-2;
+  draw2D(gridObj);
+  if(threeManager){ threeManager.dispose(); threeManager = null; }
+  threeManager = new ThreeManager(gridObj);
+  threeManager.init();
+  updateSwitchVis();
+  // set labels - still intro until switch reached
+  levelLabel.textContent = 'Intro: Find the Switch';
+  playing = true; paused=false;
+  startTimer();
+}
+
+/* ---------- buttons & UI ---------- */
+document.getElementById('genBtn').addEventListener('click', ()=>{
+  const s = parseInt(document.getElementById('sizeSel').value);
+  levelIndex = Math.max(0, levels.indexOf(s));
+  startLevel(s);
+});
+document.getElementById('playBtn').addEventListener('click', ()=>{
+  if(!playing){ playing=true; paused=false; startTimer(); ensureAudio(); if(lightsOn) playHum(true); }
+});
+document.getElementById('pauseBtn').addEventListener('click', ()=>{
+  paused = !paused;
+  if(paused) stopTimer();
+  else if(playing) startTimer();
+});
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  levelIndex = 0; score = 0; document.getElementById('score').textContent = score;
+  startLevel(levels[levelIndex]);
+  stopTimer(); playing=false; lightsOn=false; maze2dWrap.classList.remove('wrapper-lit'); playHum(false);
+});
+document.getElementById('viewSel').addEventListener('change', (e)=>{
+  currentView = e.target.value;
+  updateViewVisibility();
+});
+
+/* keyboard and touch input */
+document.addEventListener('keydown', (e)=>{
+  if(!playing || paused) return;
+  const k = e.key;
+  if(currentView === '2d'){
+    if(['ArrowUp','w','W'].includes(k)) tryMove2D(-1,0);
+    if(['ArrowDown','s','S'].includes(k)) tryMove2D(1,0);
+    if(['ArrowLeft','a','A'].includes(k)) tryMove2D(0,-1);
+    if(['ArrowRight','d','D'].includes(k)) tryMove2D(0,1);
+  } else {
+    if(threeManager) threeManager.onKey(k);
+  }
+});
+document.getElementById('touchControls').addEventListener('click', (e)=>{
+  const dir = e.target.dataset?.dir;
+  if(!dir) return;
+  if(currentView === '2d'){
+    if(dir==='up') tryMove2D(-1,0);
+    if(dir==='down') tryMove2D(1,0);
+    if(dir==='left') tryMove2D(0,-1);
+    if(dir==='right') tryMove2D(0,1);
+  } else if(threeManager){
+    threeManager.onTouch(dir);
+  }
+});
+
+/* ---------- 3D manager (Three.js) ---------- */
+class ThreeManager {
+  constructor(gridObj){
+    this.gridObj = gridObj;
+    this.width = gridObj.cols; this.height = gridObj.rows;
+    this.scene = null; this.camera = null; this.renderer = null;
+    this.wallMeshes = []; this.playerMesh = null; this.endMesh = null;
+    this.container = threeContainer;
+    this.animateId = null;
+    this.viewMode = '3dtop';
+  }
+  init(){
+    this.container.innerHTML = '';
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x041017); this.scene = scene;
+    const aspect = this.container.clientWidth / this.container.clientHeight;
+    this.camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 2000);
+    // renderer
+    this.renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+    this.container.appendChild(this.renderer.domElement);
+    // lights
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x080820, 0.5); scene.add(hemi);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.6); dir.position.set(6,10,6); scene.add(dir);
+    // floor neon
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x071b1b, roughness:0.9, metalness:0.05 });
+    const floorGeom = new THREE.PlaneGeometry(this.width*1.2, this.height*1.2);
+    const floor = new THREE.Mesh(floorGeom, floorMat); floor.rotation.x = -Math.PI/2; floor.position.y = -0.5;
+    scene.add(floor);
+    // walls (neon edges)
+    const grid = this.gridObj.grid;
+    const wallGeo = new THREE.BoxGeometry(1,1.6,1);
+    const wallMat = new THREE.MeshStandardMaterial({ color:0x07212a, emissive: 0x012826, roughness:0.7 });
+    const edgeMat = new THREE.MeshStandardMaterial({ color:0x00ffcc, emissive:0x003a2d, roughness:0.9, metalness:0.2 });
+    const offsetX = - (this.width-1)/2, offsetZ = - (this.height-1)/2;
+    for(let r=0;r<this.height;r++){
+      for(let c=0;c<this.width;c++){
+        if(grid[r][c] === 1){
+          const m = new THREE.Mesh(wallGeo, wallMat);
+          m.position.set(offsetX + c, 0.8, offsetZ + r);
+          scene.add(m); this.wallMeshes.push(m);
+          // neon edge small plane to give a subtle glow
+          const edge = new THREE.Mesh(new THREE.PlaneGeometry(0.9,0.9), edgeMat);
+          edge.rotation.x = -Math.PI/2;
+          edge.position.set(offsetX + c, 0.01, offsetZ + r);
+          edge.receiveShadow = true;
+          scene.add(edge);
+        }
+      }
+    }
+    // player
+    const cube = new THREE.BoxGeometry(0.8,0.8,0.8);
+    const mat = new THREE.MeshStandardMaterial({ color:0x39ffbf, emissive:0x003f2c, metalness:0.2, roughness:0.4 });
+    this.playerMesh = new THREE.Mesh(cube, mat);
+    const start = this.gridObj.start;
+    this.playerMesh.position.set(offsetX + start[1], 0.4, offsetZ + start[0]);
+    scene.add(this.playerMesh);
+    // end
+    const endGeo = new THREE.BoxGeometry(0.9,0.5,0.9);
+    const endMat = new THREE.MeshStandardMaterial({ color:0xff6b6b, emissive:0x310000, roughness:0.4 });
+    this.endMesh = new THREE.Mesh(endGeo, endMat);
+    const end = this.gridObj.end;
+    this.endMesh.position.set(offsetX + end[1], 0.25, offsetZ + end[0]);
+    scene.add(this.endMesh);
+    this.offsetX = offsetX; this.offsetZ = offsetZ;
+    this.setTopView();
+    this.animate();
+    // pointer to enable audio on click
+    this.renderer.domElement.addEventListener('click', ()=>ensureAudio(), { once:true });
+    // show mini-map canvas
+    miniMapCanvas.style.display = 'block';
+    drawMiniMap(); // initial
+  }
+  dispose(){ cancelAnimationFrame(this.animateId); if(this.renderer){ this.renderer.dispose(); this.container.innerHTML=''; } miniMapCanvas.style.display='none' }
+  setTopView(){
+    this.viewMode = '3dtop';
+    const size = Math.max(this.width, this.height);
+    this.camera.position.set(0, size + 6, 0.1);
+    this.camera.lookAt(0,0,0);
+    currentView = '3dtop';
+    document.getElementById('curMode').textContent = '3D Top';
+  }
+  setFirstPerson(){
+    this.viewMode = '3dfp';
+    const pm = this.playerMesh.position;
+    this.camera.position.set(pm.x, 0.6, pm.z+0.001);
+    this.camera.lookAt(pm.x, 0.6, pm.z - 1);
+    currentView = '3dfp';
+    document.getElementById('curMode').textContent = '3D FP';
+  }
+  animate = ()=>{
+    this.animateId = requestAnimationFrame(this.animate);
+    if(this.viewMode === '3dtop'){
+      const px=this.playerMesh.position.x, pz=this.playerMesh.position.z;
+      this.camera.position.x += (px - this.camera.position.x) * 0.12;
+      this.camera.position.z += (pz - this.camera.position.z) * 0.12;
+      this.camera.lookAt(px,0,pz);
+    } else if(this.viewMode==='3dfp'){
+      const px=this.playerMesh.position.x, pz=this.playerMesh.position.z;
+      this.camera.position.set(px, 0.6, pz+0.001);
+      const dir = new THREE.Vector3(0,0,-1).applyEuler(this.playerMesh.rotation);
+      this.camera.lookAt(px + dir.x, 0.6, pz + dir.z);
+    }
+    this.renderer.render(this.scene, this.camera);
+    // update minimap each frame
+    drawMiniMap();
+  }
+  onKey(key){
+    if(!this.playerMesh) return;
+    if(this.viewMode === '3dtop'){
+      let dx=0,dz=0;
+      if(['ArrowUp','w','W'].includes(key)) dz -= 1;
+      if(['ArrowDown','s','S'].includes(key)) dz += 1;
+      if(['ArrowLeft','a','A'].includes(key)) dx -= 1;
+      if(['ArrowRight','d','D'].includes(key)) dx += 1;
+      if(dx!==0 || dz!==0) this.tryMove3D(dx,dz);
+    } else {
+      if(['ArrowLeft','a','A'].includes(key)) this.playerMesh.rotation.y += 0.34;
+      if(['ArrowRight','d','D'].includes(key)) this.playerMesh.rotation.y -= 0.34;
+      if(['ArrowUp','w','W'].includes(key)){
+        const dir = new THREE.Vector3(0,0,-1).applyEuler(this.playerMesh.rotation);
+        this.tryMove3DFP(dir.x*0.48, dir.z*0.48);
+      }
+      if(['ArrowDown','s','S'].includes(key)){
+        const dir = new THREE.Vector3(0,0,1).applyEuler(this.playerMesh.rotation);
+        this.tryMove3DFP(dir.x*0.48, dir.z*0.48);
+      }
+    }
+  }
+  onTouch(dir){
+    if(this.viewMode === '3dtop'){
+      if(dir==='up') this.tryMove3D(0,-1);
+      if(dir==='down') this.tryMove3D(0,1);
+      if(dir==='left') this.tryMove3D(-1,0);
+      if(dir==='right') this.tryMove3D(1,0);
+    } else {
+      if(dir==='up'){ const dv = new THREE.Vector3(0,0,-1).applyEuler(this.playerMesh.rotation); this.tryMove3DFP(dv.x*0.48, dv.z*0.48); }
+    }
+  }
+  tryMove3D(dx,dz){
+    const newX = this.playerMesh.position.x + dx;
+    const newZ = this.playerMesh.position.z + dz;
+    for(const w of this.wallMeshes){
+      const dist = Math.hypot(w.position.x - newX, w.position.z - newZ);
+      if(dist < 0.9){ beep(160,0.06,'square',0.02); return; }
+    }
+    this.playerMesh.position.set(newX, 0.4, newZ);
+    beep(520,0.04,'sine',0.04);
+    // map world pos back to grid coordinates
+    const gr = Math.round(newZ - this.offsetZ), gc = Math.round(newX - this.offsetX);
+    // if in intro and at switch location
+    if(!lightsOn && switchPos && gr===switchPos[0] && gc===switchPos[1]){
+      reachSwitch();
+      return;
+    }
+    if(lightsOn && gr===currentGridObj.end[0] && gc===currentGridObj.end[1]){
+      onWinLevel();
+    }
+  }
+  tryMove3DFP(dx,dz){
+    const newX = this.playerMesh.position.x + dx;
+    const newZ = this.playerMesh.position.z + dz;
+    for(const w of this.wallMeshes){
+      const dist = Math.hypot(w.position.x - newX, w.position.z - newZ);
+      if(dist < 0.65){ beep(160,0.05,'square',0.02); return; }
+    }
+    this.playerMesh.position.set(newX, 0.4, newZ);
+    beep(540,0.04,'sine',0.035);
+    const gr = Math.round(newZ - this.offsetZ), gc = Math.round(newX - this.offsetX);
+    if(!lightsOn && switchPos && gr===switchPos[0] && gc===switchPos[1]){ reachSwitch(); return; }
+    if(lightsOn && gr===currentGridObj.end[0] && gc===currentGridObj.end[1]) onWinLevel();
+  }
+}
+
+/* ---------- mini-map for 3D ---------- */
+function drawMiniMap(){
+  if(!miniMapCanvas || !currentGridObj) return;
+  if(document.getElementById('viewSel').value === '3dfp' || document.getElementById('viewSel').value === '3dtop'){
+    miniMapCanvas.style.display = 'block';
+  } else miniMapCanvas.style.display = 'none';
+  const ctx = miniMapCanvas.getContext('2d');
+  const w = miniMapCanvas.width = miniMapCanvas.clientWidth;
+  const h = miniMapCanvas.height = miniMapCanvas.clientHeight;
+  ctx.clearRect(0,0,w,h);
+  const rows = currentGridObj.rows, cols = currentGridObj.cols;
+  const cellW = w/cols, cellH = h/rows;
+  // background
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(0,0,w,h);
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      if(currentGridObj.grid[r][c]===1){ ctx.fillStyle = '#082f2f'; ctx.fillRect(c*cellW, r*cellH, cellW, cellH); }
+    }
+  }
+  // draw end
+  ctx.fillStyle = '#ff6b6b'; ctx.fillRect(currentGridObj.end[1]*cellW, currentGridObj.end[0]*cellH, cellW, cellH);
+  // draw player (map position)
+  let pr = playerPos.r, pc = playerPos.c;
+  if(threeManager && (document.getElementById('viewSel').value !== '2d')){
+    // compute from three player position if available
+    const pm = threeManager.playerMesh.position;
+    pr = Math.round(pm.z - threeManager.offsetZ); pc = Math.round(pm.x - threeManager.offsetX);
+  }
+  ctx.fillStyle = '#39ffbf'; ctx.beginPath(); ctx.arc((pc+0.5)*cellW, (pr+0.5)*cellH, Math.max(3, cellW*0.22), 0, Math.PI*2); ctx.fill();
+}
+
+/* ---------- initialization ---------- */
+function updateViewVisibility(){
+  const view = document.getElementById('viewSel').value;
+  currentView = view;
+  if(view === '2d'){
+    maze2dEl.style.display='grid';
+    playerEl.style.display='block';
+    threeContainer.style.display='none';
+    miniMapCanvas.style.display='none';
+  } else {
+    maze2dEl.style.display='none';
+    playerEl.style.display='none';
+    threeContainer.style.display='block';
+    if(threeManager){
+      if(view === '3dtop') threeManager.setTopView();
+      else threeManager.setFirstPerson();
+    }
+    miniMapCanvas.style.display = 'block';
+  }
+  renderLeaderboard();
+}
+
+/* start the first level (intro) */
+function startGameAtLevel(idx){
+  levelIndex = idx || 0;
+  startLevel(levels[levelIndex]);
+}
+
+/* create and draw initial maze: start as intro where lights = off */
+function startLevel(size){
+  currentSize = size;
+  lightsOn = false;
+  maze2dWrap.classList.remove('wrapper-lit');
+  playHum(false);
+  const gridObj = generateMazeGrid(size);
+  if(gridObj.start[0]===0) gridObj.start[0]=1;
+  if(gridObj.end[0]===gridObj.rows-1) gridObj.end[0]=gridObj.rows-2;
+  draw2D(gridObj);
+  if(threeManager){ threeManager.dispose(); threeManager = null; }
+  threeManager = new ThreeManager(gridObj);
+  threeManager.init();
+  playing = true; paused = false; elapsed = 0; startTimer();
+  levelLabel.textContent = 'Intro: Find the Switch';
+  // reset player pos (2D)
+  playerPos = {r:gridObj.start[0], c:gridObj.start[1]};
+  setPlayerVisual(playerPos.r, playerPos.c, true);
+  renderLeaderboard();
+}
+
+/* ---------- start/boot ---------- */
+document.getElementById('viewSel').value = '2d';
+document.getElementById('sizeSel').value = '9';
+startGameAtLevel(0);
+renderLeaderboard();
+document.getElementById('score').textContent = score;
+window.addEventListener('click', ()=>ensureAudio(), { once:true });
+</script>
+</body>
+</html>
+
+
