@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Car Details</title>
+
+<style>
+*{
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+body{
+  margin:0;
+  background:#f3f3f3;
+}
+
+/* ===== Header ===== */
+header{
+  background:black;
+  color:white;
+  padding:15px 30px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+header h2{
+  margin:0;
+}
+
+/* ===== Main Layout ===== */
+.container{
+  max-width:1200px;
+  margin:30px auto;
+  display:grid;
+  grid-template-columns: 2fr 1fr;
+  gap:20px;
+}
+
+/* ===== Image Section ===== */
+.gallery{
+  background:white;
+  padding:15px;
+  border-radius:10px;
+}
+.gallery img{
+  width:100%;
+  border-radius:10px;
+}
+.thumbs{
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+}
+.thumbs img{
+  width:100px;
+  height:70px;
+  object-fit:cover;
+  cursor:pointer;
+  border-radius:6px;
+}
+
+/* ===== Price Box ===== */
+.price-box{
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  height:fit-content;
+}
+.price-box h2{
+  margin-top:0;
+}
+.price{
+  font-size:28px;
+  color:#d40000;
+  margin:10px 0;
+}
+.tags span{
+  background:#eee;
+  padding:5px 10px;
+  margin-right:5px;
+  border-radius:5px;
+  font-size:14px;
+}
+.call-btn{
+  display:block;
+  margin-top:20px;
+  background:black;
+  color:white;
+  text-align:center;
+  padding:12px;
+  text-decoration:none;
+  border-radius:6px;
+}
+
+/* ===== Car Details ===== */
+.details{
+  grid-column:1 / -1;
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  margin-top:10px;
+}
+.details h3{
+  border-bottom:2px solid #ddd;
+  padding-bottom:5px;
+}
+.specs{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:15px;
+}
+.spec{
+  background:#f7f7f7;
+  padding:10px;
+  border-radius:6px;
+}
+
+/* ===== Responsive ===== */
+@media(max-width:900px){
+  .container{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>SHIV MOTORS</h2>
+  <span>📞 97711-63000</span>
+</header>
+
+<div class="container">
+
+  <!-- LEFT: IMAGE GALLERY -->
+  <div class="gallery">
+    <img id="mainImage" src="images/fortuner.png">
+    <div class="thumbs">
+      <img src="images/car1.jpg" onclick="changeImage(this.src)">
+      <img src="images/car2.jpg" onclick="changeImage(this.src)">
+      <img src="images/car3.jpg" onclick="changeImage(this.src)">
+    </div>
+  </div>
+
+  <!-- RIGHT: PRICE BOX -->
+  <div class="price-box">
+    <h2 id="carName">Fortuner gen2</h2>
+
+    <div class="tags">
+      <span>37,000 KM</span>
+      <span>Diesel</span>
+      <span>Automatic</span>
+    </div>
+
+    <div class="price">₹ 35.75 Lakhs</div>
+
+
+
+    <a href="tel:9771163000" class="call-btn">CALL NOW</a>
+  </div>
+
+  <!-- BOTTOM: FULL DETAILS -->
+  <div class="details">
+    <h3>Car Details</h3>
+    <div class="specs">
+      <div class="spec"><b>Make Year:</b> 2024</div>
+      <div class="spec"><b>Registration:</b> Jun 2024</div>
+      <div class="spec"><b>Ownership:</b> 1st Owner</div>
+      <div class="spec"><b>Fuel:</b> Diesel</div>
+      <div class="spec"><b>Transmission:</b> Automatic</div>
+      <div class="spec"><b>KM Driven:</b> 37,000</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const cars = [
+  {
+    id: 1,
+    name: "Mahindra XUV700 AX7L",
+    price: "22.75 Lakhs",
+    fuel: "Diesel",
+    transmission: "Automatic",
+    km: "37,000",
+    year: 2024,
+    owner: "1st Owner",
+    images: ["images/car1.jpg", "images/car2.jpg", "images/car3.jpg"]
+  },
+  {
+    id: 2,
+    name: "Toyota Fortuner",
+    price: "28 Lakhs",
+    fuel: "Diesel",
+    transmission: "Automatic",
+    km: "42,000",
+    year: 2021,
+    owner: "1st Owner",
+    images: ["images/fortuner1.jpg", "images/fortuner2.jpg"]
+  }
+];
+
+
+function changeImage(src){
+  document.getElementById("mainImage").src = src;
+}
+</script>
+
+</body>
+</html>
+

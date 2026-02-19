@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book a Test Drive - Shiv Motors</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #000000, #333333);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      background: #000;
+      color: #fff;
+      text-align: center;
+      width: 100%;
+      padding: 18px 0;
+      font-size: 1.8rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+    }
+
+    .container {
+      background: #111;
+      border-radius: 14px;
+      margin-top: 50px;
+      padding: 30px 25px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 25px;
+      color: #ffcc00;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    label {
+      font-size: 0.95rem;
+      margin-bottom: 5px;
+      color: #ddd;
+    }
+
+    input, select, textarea {
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      background: #222;
+      color: white;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border: 1px solid #ffcc00;
+    }
+
+    button {
+      background: #ffcc00;
+      color: #000;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #ffdd33;
+    }
+
+    .confirmation {
+      text-align: center;
+      margin-top: 20px;
+      color: #4ade80;
+      font-weight: bold;
+      display: none;
+    }
+
+    .back {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .back a {
+      color: #ffcc00;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .back a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <header>SHIV Motors</header>
+
+  <div class="container">
+    <h2>Book a Test Drive</h2>
+
+    <form id="bookingForm">
+      <label for="name">Full Name:</label>
+      <input type="text" id="name" placeholder="Enter your full name" required>
+
+      <label for="phone">Phone Number:</label>
+      <input type="tel" id="phone" placeholder="Enter your phone number" required pattern="[0-9]{10}">
+
+      <label for="car">Select Car:</label>
+      <select id="car" required>
+        <option value="">-- Select a Car --</option>
+        <option value="Toyota Fortuner Gen 2">Toyota Fortuner Gen 2</option>
+        <option value="Hyryder V Hybrid">Hyryder V Hybrid</option>
+        <option value="Mahindra XUV500 W9 AT">Mahindra XUV500 W9 AT</option>
+      </select>
+
+      <label for="date">Preferred Date:</label>
+      <input type="date" id="date" required>
+
+      <label for="message">Additional Message:</label>
+      <textarea id="message" rows="3" placeholder="Any specific requests?"></textarea>
+
+      <button type="submit">Submit Booking</button>
+    </form>
+
+    <div class="confirmation" id="confirmationMsg">
+      ✅ Your test drive has been booked! We’ll contact you soon.
+    </div>
+
+    <div class="back">
+      <a href="index.html">← Back to Home</a>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("bookingForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const car = document.getElementById("car").value;
+      const date = document.getElementById("date").value;
+
+      if (!name || !phone || !car || !date) {
+        alert("Please fill out all required fields!");
+        return;
+      }
+
+      document.getElementById("confirmationMsg").style.display = "block";
+      this.reset();
+
+      // (Optional) redirect to WhatsApp with message:
+      // window.location.href = `https://wa.me/919876543210?text=Hi,%20I'm%20${encodeURIComponent(name)},%20I'd%20like%20to%20book%20a%20test%20drive%20for%20${encodeURIComponent(car)}%20on%20${encodeURIComponent(date)}.`;
+    });
+  </script>
+</body>
+</html>
